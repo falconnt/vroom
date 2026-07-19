@@ -181,7 +181,37 @@ export class EngineSound {
     this.noiseGain.gain.value = 0.0;
     this.noise.connect(this.noiseBand).connect(this.noiseGain).connect(this.engineGain);
 
+    // Overrun-"knal" (backfire) laag: korte ruisbursts, crisp door een
+    // bandpass rechtstreeks naar master (buiten het motor-lowpass om).
+    const plen = Math.floor(ctx.sampleRate * 0.12);
+    this.popBuffer = ctx.createBuffer(1, plen, ctx.sampleRate);
+    const pd = this.popBuffer.getChannelData(0);
+    for (let i = 0; i < plen; i++) pd[i] = Math.random() * 2 - 1;
+    this.popBand = ctx.createBiquadFilter();
+    this.popBand.type = 'bandpass';
+    this.popBand.frequency.value = 1700;
+    this.popBand.Q.value = 1.1;
+    this.popBand.connect(this.masterGain);
+    this._nextPop = 0;
+
     this.applyProfile(PROFILES[0]);
+  }
+
+  /** Eén korte uitlaatknal (backfire) op overrun. */
+  pop(intensity = 1) {
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.popBuffer;
+    src.playbackRate.value = 0.8 + Math.random() * 0.8;
+    const g = ctx.createGain();
+    const peak = Math.max(0.02, 0.28 * intensity);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + 0.05 + Math.random() * 0.05);
+    src.connect(g).connect(this.popBand);
+    src.start(t);
+    src.stop(t + 0.16);
   }
 
   applyProfile(profile) {
@@ -262,6 +292,15 @@ export class EngineSound {
     // Cutoff schaalt met rpm en gas
     const cutoff = p.baseCutoff + (p.maxCutoff - p.baseCutoff) * (0.4 * rpmFrac + 0.6 * rpmFrac * drive);
     this.lowpass.frequency.setTargetAtTime(cutoff, t, 0.04);
+
+    // Overrun-knallen: gas los op hoger toerental -> sportieve uitlaat knettert.
+    if (!limiter && !p.linear && l < -0.18 && rpmFrac > 0.4) {
+      if (t >= this._nextPop) {
+        const intensity = Math.min(1, -l * (0.4 + rpmFrac));
+        this.pop(intensity);
+        this._nextPop = t + 0.05 + Math.random() * 0.16;
+      }
+    }
 
     // Ruis volgt rpm + load
     const noiseTarget = p.noiseLevel * (0.35 + 0.65 * rpmFrac) * (0.5 + 0.5 * drive);

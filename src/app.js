@@ -91,6 +91,9 @@ function stop() {
   }, 250);
   $('overlay').classList.remove('hidden');
   document.body.classList.remove('running');
+  // Achtergrond-gloei uitzetten
+  $('glow').style.setProperty('--o', '0');
+  $('glowRed').style.setProperty('--o', '0');
 }
 
 // --- Render-loop (60 fps) ----------------------------------------------------
@@ -142,6 +145,15 @@ function updateGauges(speedKmh, rpm, gear, profile, limiter) {
   const nearRedline = !profile.linear && frac > 0.9;
   $('shiftLight').classList.toggle('on', nearRedline || limiter);
   $('shiftLight').classList.toggle('limit', !!limiter);
+
+  // Reactieve achtergrond: oranje gloei volgt toerental; rood licht op bij redline.
+  const glow = $('glow');
+  glow.style.setProperty('--o', (0.12 + 0.5 * frac).toFixed(3));
+  glow.style.setProperty('--s', (0.5 + 0.55 * frac).toFixed(3));
+  const redAmt = limiter ? 0.75 : Math.max(0, (frac - 0.82) / 0.18) * 0.6;
+  const glowRed = $('glowRed');
+  glowRed.style.setProperty('--o', redAmt.toFixed(3));
+  glowRed.style.setProperty('--s', (0.55 + 0.5 * frac).toFixed(3));
 
   if (performance.now() > shiftFlashUntil) arc.classList.remove('shift');
 }

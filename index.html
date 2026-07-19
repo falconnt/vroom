@@ -12,6 +12,13 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <!-- Reactieve achtergrond: gloeit mee met het toerental, rood bij redline.
+       Alleen opacity/transform animeren -> GPU-vriendelijk (Tesla Atom). -->
+  <div class="bg" aria-hidden="true">
+    <div id="glow" class="glow"></div>
+    <div id="glowRed" class="glow-red"></div>
+  </div>
+
   <!-- START-overlay: AudioContext mag pas na een user-gesture starten -->
   <div id="overlay" class="overlay">
     <div class="overlay-card">

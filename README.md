@@ -73,8 +73,11 @@ demo-slider. GPS werkt alleen over HTTPS of `localhost`.
 - **Fase 3 ✅** versnellingsbak met op-/afschakelen, terugschakel-blip
   (rev-match), toerenbegrenzer met "bounce", startgeluid, shift-light, en
   extra motorprofielen (V8, Inline-4 turbo, V10, V-twin, Sci-Fi lineair).
-- **Volgende** overrun/knal-accenten bij uitrollen, meer profielen, en
-  optioneel sample-gebaseerde loops zodra er een rechtenvrije bron is.
+- **Fase 4/5 (deels) ✅** overrun-knallen (backfire) bij gas loslaten op
+  hoger toerental, en een reactieve achtergrond die meegloeit met het
+  toerental (rood bij redline).
+- **Volgende** meer profielen, achtergrond-keuze, en optioneel
+  sample-gebaseerde loops zodra er een rechtenvrije bron is.
 
 Vijf geluiden nu beschikbaar: **V8 Rumble**, **Inline-4 Turbo**,
 **V10 Screamer**, **V-twin Motor** (alle manueel met versnellingsbak) en

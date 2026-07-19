@@ -30,6 +30,30 @@ body {
   inset: 0;
 }
 
+/* ---------- Reactieve achtergrond ---------- */
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--bg);
+  pointer-events: none;
+}
+.glow, .glow-red {
+  position: absolute;
+  left: 50%;
+  top: 24%;
+  width: 90vmin;
+  height: 90vmin;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(var(--s, 0.55));
+  opacity: var(--o, 0);
+  will-change: opacity, transform;
+  transition: opacity .12s linear, transform .12s linear;
+}
+.glow { background: radial-gradient(circle, rgba(255, 120, 40, .40) 0%, transparent 62%); }
+.glow-red { background: radial-gradient(circle, rgba(239, 68, 68, .50) 0%, transparent 62%); }
+
 /* ---------- START overlay ---------- */
 .overlay {
   position: fixed;
