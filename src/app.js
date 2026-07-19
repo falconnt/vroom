@@ -10,6 +10,23 @@ const $ = (id) => document.getElementById(id);
 const ALL_PROFILES = [...PROFILES, ...SAMPLE_PROFILES];
 const getProfile = (id) => ALL_PROFILES.find((p) => p.id === id) || PROFILES[0];
 
+// UI-metadata per motor: korte knop-naam + subtiele merkkleur (r,g,b).
+const UI_META = {
+  'real-fordgt':  { short: 'Ford GT',    color: '58,130,246'  },
+  'real-f40':     { short: 'Ferrari',    color: '226,32,28'   },
+  'real-porsche': { short: 'Porsche',    color: '212,160,60'  },
+  'real-subaru':  { short: 'Subaru',     color: '32,170,214'  },
+  'real-rally':   { short: 'Rally',      color: '124,190,60'  },
+  'real-diesel':  { short: 'Diesel',     color: '198,122,46'  },
+  'real-bank':    { short: 'Smooth',     color: '46,184,166'  },
+  'v8':           { short: 'V8',         color: '255,106,43'  },
+  'i4turbo':      { short: 'Inline-4',   color: '255,179,0'   },
+  'v10':          { short: 'V10',        color: '176,75,216'  },
+  'vtwin':        { short: 'V-twin',     color: '225,75,107'  },
+  'scifi':        { short: 'Sci-Fi',     color: '34,211,238'  },
+};
+const metaOf = (id) => UI_META[id] || { short: id, color: '255,120,40' };
+
 const state = {
   running: false,
   ctx: null,
@@ -23,28 +40,44 @@ const state = {
   lastSpeed: 0,
   wakeLock: null,
   loading: false,
+  cat: 'sample',   // actieve categorie-tab
 };
 
-// --- Profielkeuze (gegroepeerd) ---------------------------------------------
-function populateProfiles() {
-  const sel = $('soundSelect');
-  sel.innerHTML = '';
-  const groups = [
-    ['Echt opgenomen', SAMPLE_PROFILES],
-    ['Procedureel (synth)', PROFILES],
-  ];
-  for (const [name, list] of groups) {
-    const og = document.createElement('optgroup');
-    og.label = name;
-    for (const p of list) {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.label;
-      og.appendChild(opt);
-    }
-    sel.appendChild(og);
+// --- Motorkeuze: knoppen per categorie --------------------------------------
+function renderEngines() {
+  const grid = $('engineGrid');
+  const list = state.cat === 'sample' ? SAMPLE_PROFILES : PROFILES;
+  grid.innerHTML = '';
+  for (const p of list) {
+    const m = metaOf(p.id);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'engine-btn' + (p.id === state.profileId ? ' active' : '');
+    btn.dataset.id = p.id;
+    btn.style.setProperty('--c', m.color);
+    btn.innerHTML = `<span class="dot"></span><span class="ename">${m.short}</span>`;
+    grid.appendChild(btn);
   }
-  sel.value = state.profileId;
+  document.querySelectorAll('#catTabs button').forEach((b) =>
+    b.classList.toggle('active', b.dataset.cat === state.cat)
+  );
+}
+
+function setBrand(id) {
+  document.documentElement.style.setProperty('--brand-rgb', metaOf(id).color);
+}
+
+async function selectEngine(id) {
+  if (id === state.profileId) return;
+  state.profileId = id;
+  const p = getProfile(id);
+  setBrand(id);
+  $('modeLabel').textContent = modeText(p);
+  renderEngines();
+  if (state.running) {
+    await buildEngine(p);
+    state.model.setProfile(p, state.maxSpeed);
+  }
 }
 
 // --- Wake Lock ---------------------------------------------------------------
@@ -201,14 +234,13 @@ function wireControls() {
   $('startBtn').addEventListener('click', start);
   $('stopBtn').addEventListener('click', stop);
 
-  $('soundSelect').addEventListener('change', async (ev) => {
-    state.profileId = ev.target.value;
-    const p = getProfile(state.profileId);
-    $('modeLabel').textContent = modeText(p);
-    if (state.running) {
-      await buildEngine(p);
-      state.model.setProfile(p, state.maxSpeed);
-    }
+  $('catTabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (b) { state.cat = b.dataset.cat; renderEngines(); }
+  });
+  $('engineGrid').addEventListener('click', (e) => {
+    const b = e.target.closest('.engine-btn');
+    if (b) selectEngine(b.dataset.id);
   });
 
   $('volume').addEventListener('input', (e) => {
@@ -245,7 +277,9 @@ function wireControls() {
 }
 
 // --- Init --------------------------------------------------------------------
-populateProfiles();
+state.cat = getProfile(state.profileId).kind === 'sample' ? 'sample' : 'synth';
+setBrand(state.profileId);
+renderEngines();
 wireControls();
 $('modeLabel').textContent = modeText(getProfile(state.profileId));
 

@@ -75,11 +75,14 @@
 
     <!-- Bediening -->
     <section class="controls">
-      <label class="ctl">
-        <span>Geluid</span>
-        <select id="soundSelect"></select>
+      <div class="ctl">
+        <div class="cat-tabs" id="catTabs">
+          <button type="button" data-cat="sample" class="active">🏎 Echte auto's</button>
+          <button type="button" data-cat="synth">🎛 Varianten</button>
+        </div>
+        <div class="engine-grid" id="engineGrid"></div>
         <small id="modeLabel" class="sub"></small>
-      </label>
+      </div>
 
       <label class="ctl">
         <span>Volume — <b id="volVal">85%</b></span>
