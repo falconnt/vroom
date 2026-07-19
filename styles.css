@@ -12,6 +12,7 @@
 }
 
 * { box-sizing: border-box; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -22,6 +23,13 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Full-screen, geen scroll: het dashboard vult altijd exact het scherm. */
+body {
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
 /* ---------- START overlay ---------- */
 .overlay {
   position: fixed;
@@ -29,7 +37,8 @@ html, body {
   z-index: 50;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: 16px;
+  overflow: auto;
   background: radial-gradient(120% 120% at 50% 0%, #171b21 0%, #0b0d10 70%);
 }
 .overlay.hidden { display: none; }
@@ -38,7 +47,7 @@ html, body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 20px;
-  padding: 28px 26px 24px;
+  padding: clamp(18px, 3vh, 28px) clamp(18px, 4vw, 26px);
   text-align: center;
   box-shadow: 0 30px 80px rgba(0, 0, 0, .5);
 }
@@ -50,21 +59,22 @@ html, body {
   background-clip: text;
   color: transparent;
 }
-.logo { font-size: 44px; }
-.tagline { color: var(--muted); margin: 4px 0 20px; }
+.logo { font-size: clamp(32px, 7vh, 44px); }
+.tagline { color: var(--muted); margin: 4px 0 clamp(12px, 2.5vh, 20px); }
 .checklist {
   text-align: left;
-  margin: 0 auto 22px;
+  margin: 0 auto clamp(14px, 2.5vh, 22px);
   max-width: 420px;
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.55;
   padding-left: 22px;
+  font-size: clamp(13px, 1.8vh, 15px);
 }
 .checklist b { color: var(--accent-2); }
 .start-btn {
   width: 100%;
-  padding: 20px;
-  font-size: 26px;
+  padding: clamp(14px, 2.4vh, 20px);
+  font-size: clamp(20px, 3.2vh, 26px);
   font-weight: 800;
   letter-spacing: 1px;
   color: #fff;
@@ -75,26 +85,31 @@ html, body {
   box-shadow: 0 10px 30px rgba(255, 87, 34, .35);
 }
 .start-btn:active { transform: translateY(1px); }
-.hint { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
+.hint { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
 
-/* ---------- Dashboard ---------- */
-.dash {
-  max-width: 720px;
+/* ---------- App-shell: vult het scherm ---------- */
+.app {
+  height: 100vh;
+  height: 100dvh;
+  max-width: 1100px;
   margin: 0 auto;
-  min-height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 14px 16px 20px;
+  padding:
+    max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  gap: clamp(6px, 1.4vh, 14px);
+  overflow: hidden;
 }
 .topbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
 }
-.brand { font-size: 22px; }
+.brand { font-size: clamp(18px, 2.6vh, 24px); }
 .stop-btn {
-  padding: 10px 18px;
+  padding: 8px 16px;
   font-weight: 800;
   color: #fff;
   background: var(--panel-2);
@@ -105,17 +120,43 @@ html, body {
 .stop-btn:disabled { opacity: .4; cursor: default; }
 body.running .stop-btn { border-color: var(--danger); color: #ffd7d2; }
 
+/* De "stage" houdt gauges + bediening en verdeelt de resterende hoogte. */
+.stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 2vh, 18px);
+  justify-content: flex-start;
+}
+
 /* ---------- Gauges ---------- */
 .gauges {
+  flex: 1 1 auto;   /* vult de vrije ruimte; bediening blijft eronder */
+  min-height: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
   justify-content: center;
-  flex-wrap: wrap;
-  padding: 10px 0 6px;
+  gap: clamp(8px, 1.6vh, 16px);
+  overflow: hidden;
 }
-.rpm-cluster { position: relative; width: 260px; height: 260px; }
-.rpm-svg { width: 100%; height: 100%; transform: rotate(0deg); }
+/* De RPM-meter is de "schokdemper": hij krimpt mee met de vrije hoogte,
+   zodat de bediening altijd in beeld blijft zonder overlap of scroll. */
+.rpm-cluster {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+.rpm-svg {
+  height: 100%;
+  width: 100%;
+  max-height: 340px;   /* niet te groot op ruime schermen */
+  /* SVG viewBox + preserveAspectRatio houdt de meter vierkant en gecentreerd */
+}
 .rpm-track {
   fill: none;
   stroke: var(--panel-2);
@@ -127,7 +168,6 @@ body.running .stop-btn { border-color: var(--danger); color: #ffd7d2; }
 }
 .rpm-fill {
   fill: none;
-  stroke: url(#g);
   stroke: var(--accent-2);
   stroke-width: 14;
   stroke-linecap: round;
@@ -156,40 +196,47 @@ body.running .stop-btn { border-color: var(--danger); color: #ffd7d2; }
   text-align: center;
   pointer-events: none;
 }
-.rpm-num { font-size: 46px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rpm-num { font-size: clamp(30px, 6vh, 48px); font-weight: 900; font-variant-numeric: tabular-nums; }
 .rpm-label { color: var(--muted); letter-spacing: 2px; font-size: 12px; }
 
-.readouts { display: flex; flex-direction: column; gap: 12px; }
+.readouts {
+  display: flex;
+  flex-direction: row;
+  gap: clamp(8px, 2vw, 16px);
+  justify-content: center;
+  width: 100%;
+}
 .readout {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 16px;
-  padding: 14px 22px;
+  padding: clamp(8px, 1.4vh, 14px) clamp(14px, 3vw, 22px);
   text-align: center;
-  min-width: 140px;
+  min-width: 110px;
+  flex: 0 1 auto;
 }
-.readout.big { padding: 20px 22px; }
-.ro-num { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
-.readout.big .ro-num { font-size: 60px; color: var(--accent-2); }
+.ro-num { font-size: clamp(26px, 4.4vh, 42px); font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.readout.big .ro-num { font-size: clamp(34px, 6.2vh, 64px); color: var(--accent-2); }
 .ro-label { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
 
 /* ---------- Controls ---------- */
 .controls {
-  margin-top: 14px;
+  flex: 0 0 auto;
   display: grid;
-  gap: 14px;
+  gap: clamp(8px, 1.6vh, 14px);
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 16px;
+  padding: clamp(10px, 1.8vh, 16px);
+  overflow: auto;
 }
-.ctl { display: grid; gap: 8px; font-size: 15px; }
+.ctl { display: grid; gap: 6px; font-size: clamp(13px, 1.8vh, 15px); }
 .ctl > span { color: var(--text); }
 .ctl b { color: var(--accent-2); }
 .sub { color: var(--muted); font-size: 12px; }
 select, input[type=range] { width: 100%; }
 select {
-  padding: 12px;
+  padding: 10px 12px;
   font-size: 16px;
   background: var(--panel-2);
   color: var(--text);
@@ -198,7 +245,8 @@ select {
 }
 input[type=range] {
   -webkit-appearance: none;
-  height: 34px;
+  appearance: none;
+  height: 30px;
   background: transparent;
 }
 input[type=range]::-webkit-slider-runnable-track {
@@ -209,20 +257,20 @@ input[type=range]::-moz-range-track {
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 30px; height: 30px; margin-top: -10px;
+  width: 28px; height: 28px; margin-top: -9px;
   border-radius: 50%;
   background: var(--accent);
   border: 3px solid #fff2;
 }
 input[type=range]::-moz-range-thumb {
-  width: 30px; height: 30px; border: 3px solid #fff2;
+  width: 28px; height: 28px; border: 3px solid #fff2;
   border-radius: 50%; background: var(--accent);
 }
 .segmented { display: flex; gap: 8px; }
 .segmented label {
   flex: 1;
   text-align: center;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-2);
@@ -232,7 +280,7 @@ input[type=range]::-moz-range-thumb {
 .demo-row { display: flex; align-items: center; gap: 12px; }
 .demo-row.hidden, .gps-status.hidden { display: none; }
 .gps-status {
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 10px;
   background: var(--panel-2);
   color: var(--good);
@@ -241,20 +289,51 @@ input[type=range]::-moz-range-thumb {
 .gps-status.err { color: var(--danger); }
 
 .foot {
-  margin-top: auto;
-  padding-top: 16px;
+  flex: 0 0 auto;
+  padding-top: 8px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   color: var(--muted);
   font-size: 12px;
   gap: 10px;
-  flex-wrap: wrap;
 }
 .foot a { color: var(--muted); }
+.foot span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Groter maken op het Tesla-scherm (breed liggend) */
-@media (min-width: 900px) {
-  .rpm-cluster { width: 320px; height: 320px; }
-  .readout.big .ro-num { font-size: 72px; }
-  .dash { max-width: 860px; }
+/* ---------- Landschap / breed scherm (o.a. Tesla): twee kolommen ---------- */
+@media (min-aspect-ratio: 1/1) and (min-width: 640px) {
+  .stage {
+    flex-direction: row;
+    align-items: stretch;
+    gap: clamp(12px, 2.5vw, 28px);
+  }
+  .gauges {
+    flex: 1 1 55%;
+    justify-content: center;
+    gap: clamp(10px, 2.5vh, 22px);
+  }
+  /* Ruim scherm: meter + uitlezing als één gecentreerde groep,
+     geen shrink nodig (genoeg hoogte), dus geen loshangende tegels. */
+  .rpm-cluster {
+    flex: 0 1 auto;
+    height: min(440px, 72vh);
+    width: auto;
+    aspect-ratio: 1 / 1;
+    max-width: 100%;
+  }
+  .rpm-svg { height: 100%; width: 100%; max-height: none; }
+  .controls {
+    flex: 1 1 45%;
+    align-content: start;
+    align-self: center;
+    max-height: 100%;
+  }
+  .readout.big .ro-num { font-size: clamp(40px, 9vh, 76px); }
+}
+
+/* Zeer lage landschap-schermen (telefoon liggend): compacter */
+@media (max-height: 460px) and (min-aspect-ratio: 1/1) {
+  .foot { display: none; }
+  .rpm-label { font-size: 10px; }
 }
