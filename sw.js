@@ -4,7 +4,7 @@
 //     de nieuwste versie; offline valt hij terug op de cache. (Dit voorkomt het
 //     "ik zie de oude versie"-probleem van een cache-first shell.)
 //   - Zware, zelden wijzigende assets (geluiden, iconen): CACHE-FIRST.
-const CACHE = 'vroom-v6';
+const CACHE = 'vroom-v7';
 
 const CORE = [
   './', './index.html', './about.html', './styles.css', './manifest.webmanifest',
