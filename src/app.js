@@ -1,9 +1,14 @@
-// app.js — orchestratie: koppelt snelheid -> rpm-model -> audio-engine -> UI.
-import { EngineSound, PROFILES, getProfile } from './audioEngine.js';
+// app.js — orchestratie: snelheid -> rpm-model -> (synth|sample) engine -> UI.
+import { EngineSound, PROFILES } from './audioEngine.js';
+import { SampledEngine, SAMPLE_PROFILES } from './sampledEngine.js';
 import { RpmModel } from './rpmModel.js';
 import { SpeedSource } from './speed.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Alle geluiden: procedureel (synth) + echt opgenomen (sample).
+const ALL_PROFILES = [...PROFILES, ...SAMPLE_PROFILES];
+const getProfile = (id) => ALL_PROFILES.find((p) => p.id === id) || PROFILES[0];
 
 const state = {
   running: false,
@@ -11,64 +16,100 @@ const state = {
   engine: null,
   model: null,
   speed: new SpeedSource(),
-  profileId: 'v8',
-  maxSpeed: 120,      // km/h kalibratie
+  profileId: 'real-fordgt',
+  maxSpeed: 120,
   volume: 0.85,
   lastFrame: 0,
   lastSpeed: 0,
   wakeLock: null,
+  loading: false,
 };
 
-// --- Profielkeuze vullen -----------------------------------------------------
+// --- Profielkeuze (gegroepeerd) ---------------------------------------------
 function populateProfiles() {
   const sel = $('soundSelect');
   sel.innerHTML = '';
-  for (const p of PROFILES) {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.label;
-    sel.appendChild(opt);
+  const groups = [
+    ['Echt opgenomen', SAMPLE_PROFILES],
+    ['Procedureel (synth)', PROFILES],
+  ];
+  for (const [name, list] of groups) {
+    const og = document.createElement('optgroup');
+    og.label = name;
+    for (const p of list) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.label;
+      og.appendChild(opt);
+    }
+    sel.appendChild(og);
   }
   sel.value = state.profileId;
 }
 
-// --- Wake Lock (telefoon: scherm aan houden) --------------------------------
+// --- Wake Lock ---------------------------------------------------------------
 async function requestWakeLock() {
   try {
     if ('wakeLock' in navigator) {
       state.wakeLock = await navigator.wakeLock.request('screen');
       state.wakeLock.addEventListener('release', () => {});
     }
-  } catch (e) {
-    /* niet fataal */
-  }
+  } catch (e) { /* niet fataal */ }
 }
 function releaseWakeLock() {
-  if (state.wakeLock) {
-    state.wakeLock.release().catch(() => {});
-    state.wakeLock = null;
-  }
+  if (state.wakeLock) { state.wakeLock.release().catch(() => {}); state.wakeLock = null; }
 }
 document.addEventListener('visibilitychange', () => {
   if (state.running && document.visibilityState === 'visible') requestWakeLock();
 });
 
+// --- Engine bouwen (synth of sample) ----------------------------------------
+function setLoading(on, label) {
+  state.loading = on;
+  $('modeLabel').textContent = on ? (label || 'Geluid laden…') : modeText(getProfile(state.profileId));
+}
+function modeText(p) {
+  if (p.kind === 'sample') return p.layers.length > 1 ? 'Echt opgenomen · gelaagd' : 'Echt opgenomen';
+  return p.linear ? 'Lineair' : 'Manueel (versnellingsbak)';
+}
+
+async function buildEngine(profile) {
+  if (state.engine) state.engine.stop();
+  if (profile.kind === 'sample') {
+    const e = new SampledEngine(state.ctx);
+    setLoading(true);
+    try {
+      await e.load(profile);
+    } finally {
+      setLoading(false);
+    }
+    e.setVolume(state.volume);
+    e.start();
+    state.engine = e;
+  } else {
+    const e = new EngineSound(state.ctx);
+    e.applyProfile(profile);
+    e.setVolume(state.volume);
+    e.start();
+    state.engine = e;
+  }
+}
+
 // --- Start / stop ------------------------------------------------------------
 async function start() {
-  if (state.running) return;
-  // AudioContext mag pas na een user-gesture starten (deze klik).
+  if (state.running || state.loading) return;
   state.ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (state.ctx.state === 'suspended') await state.ctx.resume();
 
-  state.engine = new EngineSound(state.ctx);
   const profile = getProfile(state.profileId);
-  state.engine.applyProfile(profile);
-  state.engine.setVolume(state.volume);
-  state.engine.start();
+  const btn = $('startBtn');
+  const orig = btn.textContent;
+  if (profile.kind === 'sample') { btn.textContent = '⏳ Laden…'; btn.disabled = true; }
+
+  await buildEngine(profile);
+  btn.textContent = orig; btn.disabled = false;
 
   state.model = new RpmModel(profile, state.maxSpeed);
-
-  // GPS of demo volgens de huidige keuze
   state.speed.setSource(document.querySelector('input[name=src]:checked').value);
 
   state.running = true;
@@ -85,13 +126,9 @@ function stop() {
   state.running = false;
   if (state.engine) state.engine.stop();
   releaseWakeLock();
-  // Context even laten uitfaden, dan suspenden
-  setTimeout(() => {
-    if (state.ctx && state.ctx.state === 'running') state.ctx.suspend();
-  }, 250);
+  setTimeout(() => { if (state.ctx && state.ctx.state === 'running') state.ctx.suspend(); }, 350);
   $('overlay').classList.remove('hidden');
   document.body.classList.remove('running');
-  // Achtergrond-gloei uitzetten
   $('glow').style.setProperty('--o', '0');
   $('glowRed').style.setProperty('--o', '0');
 }
@@ -103,24 +140,27 @@ function loop(now) {
   state.lastFrame = now;
 
   const speedKmh = state.speed.tick(dt);
-  // Acceleratie in m/s^2 uit snelheidsverschil
   const accel = ((speedKmh - state.lastSpeed) / 3.6) / (dt / 1000 || 0.016);
   state.lastSpeed = speedKmh;
 
   const out = state.model.update(speedKmh, accel, dt);
-  if (out.shifted) {
-    if (out.shiftDir === 'down') state.engine.shiftBlip();
-    else state.engine.shiftCut();
-    flashShift();
+  const e = state.engine;
+  if (e) {
+    if (out.shifted) {
+      if (e instanceof SampledEngine) e.gearShift();
+      else if (out.shiftDir === 'down') e.shiftBlip();
+      else e.shiftCut();
+      flashShift();
+    }
+    e.update(out.rpm, out.load, { limiter: out.limiter });
   }
-  state.engine.update(out.rpm, out.load, { limiter: out.limiter });
 
   updateGauges(speedKmh, out.rpm, out.gear, getProfile(state.profileId), out.limiter);
   requestAnimationFrame(loop);
 }
 
 // --- UI-uitlezing ------------------------------------------------------------
-const GAUGE = { start: -220, end: 40 }; // graden voor de RPM-boog
+const GAUGE = { start: -220, end: 40 };
 let shiftFlashUntil = 0;
 function flashShift() {
   shiftFlashUntil = performance.now() + 130;
@@ -137,16 +177,14 @@ function updateGauges(speedKmh, rpm, gear, profile, limiter) {
 
   const arc = $('rpmArc');
   const circ = 2 * Math.PI * 90;
-  const sweep = 0.72; // fractie van de cirkel die de boog beslaat
+  const sweep = 0.72;
   arc.style.strokeDasharray = `${frac * sweep * circ} ${circ}`;
   arc.classList.toggle('redline', frac > 0.9);
 
-  // Shift-light: knippert vlak voor redline in manuele modus (tijd om te schakelen)
   const nearRedline = !profile.linear && frac > 0.9;
   $('shiftLight').classList.toggle('on', nearRedline || limiter);
   $('shiftLight').classList.toggle('limit', !!limiter);
 
-  // Reactieve achtergrond: oranje gloei volgt toerental; rood licht op bij redline.
   const glow = $('glow');
   glow.style.setProperty('--o', (0.12 + 0.5 * frac).toFixed(3));
   glow.style.setProperty('--s', (0.5 + 0.55 * frac).toFixed(3));
@@ -163,30 +201,29 @@ function wireControls() {
   $('startBtn').addEventListener('click', start);
   $('stopBtn').addEventListener('click', stop);
 
-  $('soundSelect').addEventListener('change', (e) => {
-    state.profileId = e.target.value;
+  $('soundSelect').addEventListener('change', async (ev) => {
+    state.profileId = ev.target.value;
     const p = getProfile(state.profileId);
-    if (state.engine) state.engine.applyProfile(p);
-    if (state.model) state.model.setProfile(p, state.maxSpeed);
-    $('modeLabel').textContent = p.linear ? 'Lineair' : 'Manueel (versnellingsbak)';
+    $('modeLabel').textContent = modeText(p);
+    if (state.running) {
+      await buildEngine(p);
+      state.model.setProfile(p, state.maxSpeed);
+    }
   });
 
-  const vol = $('volume');
-  vol.addEventListener('input', (e) => {
+  $('volume').addEventListener('input', (e) => {
     state.volume = e.target.value / 100;
     $('volVal').textContent = e.target.value + '%';
     if (state.engine) state.engine.setVolume(state.volume);
   });
 
-  const ms = $('maxSpeed');
-  ms.addEventListener('input', (e) => {
+  $('maxSpeed').addEventListener('input', (e) => {
     state.maxSpeed = parseInt(e.target.value, 10);
     $('maxSpeedVal').textContent = state.maxSpeed + ' km/h';
     if (state.model) state.model.setMaxSpeed(state.maxSpeed);
   });
 
-  const demo = $('demoSpeed');
-  demo.addEventListener('input', (e) => {
+  $('demoSpeed').addEventListener('input', (e) => {
     state.speed.setDemo(parseInt(e.target.value, 10));
     $('demoVal').textContent = e.target.value + ' km/h';
   });
@@ -210,9 +247,8 @@ function wireControls() {
 // --- Init --------------------------------------------------------------------
 populateProfiles();
 wireControls();
-$('modeLabel').textContent = 'Manueel (versnellingsbak)';
+$('modeLabel').textContent = modeText(getProfile(state.profileId));
 
-// Service worker voor offline gebruik (PWA).
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
