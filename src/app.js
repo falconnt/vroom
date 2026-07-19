@@ -34,7 +34,7 @@ const state = {
   model: null,
   speed: new SpeedSource(),
   profileId: 'real-fordgt',
-  maxSpeed: 120,
+  maxSpeed: 250,   // topsnelheid auto (Tesla Model 3 ~225–261 km/h)
   volume: 0.85,
   lastFrame: 0,
   lastSpeed: 0,

@@ -90,8 +90,9 @@
       </label>
 
       <label class="ctl">
-        <span>Max. snelheid (redline-kalibratie) — <b id="maxSpeedVal">120 km/h</b></span>
-        <input id="maxSpeed" type="range" min="30" max="250" value="120" />
+        <span>Topsnelheid auto — <b id="maxSpeedVal">250 km/h</b>
+          <small class="sub">(redline in hoogste versnelling · Tesla M3: 225–261)</small></span>
+        <input id="maxSpeed" type="range" min="60" max="290" value="250" />
       </label>
 
       <div class="ctl">
@@ -101,7 +102,7 @@
           <label><input type="radio" name="src" value="gps" /> GPS (rijden)</label>
         </div>
         <div id="demoRow" class="demo-row">
-          <input id="demoSpeed" type="range" min="0" max="250" value="0" />
+          <input id="demoSpeed" type="range" min="0" max="290" value="0" />
           <b id="demoVal">0 km/h</b>
         </div>
         <div id="gpsStatus" class="gps-status hidden"></div>
