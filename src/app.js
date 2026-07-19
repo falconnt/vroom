@@ -284,7 +284,19 @@ wireControls();
 $('modeLabel').textContent = modeText(getProfile(state.profileId));
 
 if ('serviceWorker' in navigator) {
+  // Herlaad automatisch zodra een nieuwe versie de controle overneemt —
+  // maar niet bij de allereerste installatie (dan was er nog geen controller).
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // updateViaCache:'none' -> de browser checkt sw.js altijd vers (geen HTTP-cache).
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+      .then((reg) => reg.update())
+      .catch(() => {});
   });
 }
