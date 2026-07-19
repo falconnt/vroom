@@ -105,16 +105,25 @@ function loop(now) {
   state.lastSpeed = speedKmh;
 
   const out = state.model.update(speedKmh, accel, dt);
-  if (out.shifted) state.engine.shiftCut();
-  state.engine.update(out.rpm, out.load);
+  if (out.shifted) {
+    if (out.shiftDir === 'down') state.engine.shiftBlip();
+    else state.engine.shiftCut();
+    flashShift();
+  }
+  state.engine.update(out.rpm, out.load, { limiter: out.limiter });
 
-  updateGauges(speedKmh, out.rpm, out.gear, getProfile(state.profileId));
+  updateGauges(speedKmh, out.rpm, out.gear, getProfile(state.profileId), out.limiter);
   requestAnimationFrame(loop);
 }
 
 // --- UI-uitlezing ------------------------------------------------------------
 const GAUGE = { start: -220, end: 40 }; // graden voor de RPM-boog
-function updateGauges(speedKmh, rpm, gear, profile) {
+let shiftFlashUntil = 0;
+function flashShift() {
+  shiftFlashUntil = performance.now() + 130;
+  $('rpmArc').classList.add('shift');
+}
+function updateGauges(speedKmh, rpm, gear, profile, limiter) {
   $('speedVal').textContent = Math.round(speedKmh);
   $('rpmVal').textContent = Math.round(rpm).toLocaleString('nl-NL');
   $('gearVal').textContent = profile.linear ? '—' : gear;
@@ -128,6 +137,13 @@ function updateGauges(speedKmh, rpm, gear, profile) {
   const sweep = 0.72; // fractie van de cirkel die de boog beslaat
   arc.style.strokeDasharray = `${frac * sweep * circ} ${circ}`;
   arc.classList.toggle('redline', frac > 0.9);
+
+  // Shift-light: knippert vlak voor redline in manuele modus (tijd om te schakelen)
+  const nearRedline = !profile.linear && frac > 0.9;
+  $('shiftLight').classList.toggle('on', nearRedline || limiter);
+  $('shiftLight').classList.toggle('limit', !!limiter);
+
+  if (performance.now() > shiftFlashUntil) arc.classList.remove('shift');
 }
 
 // --- Controls ----------------------------------------------------------------

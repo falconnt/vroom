@@ -177,6 +177,7 @@ body.running .stop-btn { border-color: var(--danger); color: #ffd7d2; }
   transition: stroke .2s;
 }
 .rpm-fill.redline { stroke: var(--danger); }
+.rpm-fill.shift { stroke: #fff; }
 .needle line {
   stroke: var(--accent);
   stroke-width: 4;
@@ -198,6 +199,27 @@ body.running .stop-btn { border-color: var(--danger); color: #ffd7d2; }
 }
 .rpm-num { font-size: clamp(30px, 6vh, 48px); font-weight: 900; font-variant-numeric: tabular-nums; }
 .rpm-label { color: var(--muted); letter-spacing: 2px; font-size: 12px; }
+
+/* Shift-light: knippert vlak voor redline, wordt rood bij de begrenzer. */
+.shift-light {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 900;
+  letter-spacing: 2px;
+  font-size: clamp(11px, 1.7vh, 15px);
+  color: var(--accent-2);
+  background: rgba(0, 0, 0, .25);
+  padding: 3px 12px;
+  border-radius: 20px;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.shift-light.on { opacity: 1; animation: shiftblink .45s steps(1) infinite; }
+.shift-light.limit { color: #fff; background: var(--danger); }
+@keyframes shiftblink { 50% { opacity: .2; } }
 
 .readouts {
   display: flex;

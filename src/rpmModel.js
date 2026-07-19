@@ -60,7 +60,7 @@ export class RpmModel {
       const frac = clamp(speed / this.maxSpeed, 0, 1);
       this.rpm = p.idleRpm + frac * (p.redline - p.idleRpm);
       this.gear = 0;
-      return { rpm: this.rpm, gear: 1, load, shifted: false };
+      return { rpm: this.rpm, gear: 1, load, shifted: false, shiftDir: null, limiter: false };
     }
 
     // Manueel: bereken rpm in de huidige versnelling
@@ -71,6 +71,7 @@ export class RpmModel {
     };
 
     let shifted = false;
+    const prevGear = this.gear;
     this.lastShift += dtMs;
 
     let rpm = rpmFor(this.gear);
@@ -105,7 +106,19 @@ export class RpmModel {
       rpm = p.idleRpm;
     }
 
+    // Toerenbegrenzer: in de hoogste versnelling niet over redline draaien,
+    // maar "bouncen" tegen de begrenzer.
+    let limiter = false;
+    if (this.gear === this.gearRatios.length - 1 && rpm >= p.redline * 0.985) {
+      limiter = true;
+    }
+    // Nooit boven redline weergeven/afspelen (in tussenversnellingen zorgt de
+    // schakel-automaat dat het toerental terugvalt).
+    rpm = Math.min(rpm, p.redline);
+
+    const shiftDir = shifted ? (this.gear > prevGear ? 'up' : 'down') : null;
+
     this.rpm = rpm;
-    return { rpm, gear: this.gear + 1, load, shifted };
+    return { rpm, gear: this.gear + 1, load, shifted, shiftDir, limiter };
   }
 }

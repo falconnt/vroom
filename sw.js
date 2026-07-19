@@ -1,7 +1,7 @@
 // sw.js — service worker: cache de hele app-shell zodat Vroom offline werkt.
 // De app heeft geen externe assets (geluid is procedureel), dus dit is een
 // simpele, complete offline-cache.
-const CACHE = 'vroom-v1';
+const CACHE = 'vroom-v2';
 const ASSETS = [
   './',
   './index.html',

@@ -62,6 +62,32 @@ export const PROFILES = [
     linear: false,
   },
   {
+    id: 'v10',
+    label: 'V10 Screamer (manueel)',
+    cylinders: 10,
+    harmonics: [0.55, 0.85, 1.0, 0.7, 0.6, 0.45, 0.4, 0.3, 0.22, 0.15],
+    idleRpm: 1000,
+    redline: 8800,
+    baseCutoff: 620,
+    maxCutoff: 8600,
+    noiseLevel: 0.18,
+    rumble: 0.3,
+    linear: false,
+  },
+  {
+    id: 'vtwin',
+    label: 'V-twin Motor (manueel)',
+    cylinders: 2,
+    harmonics: [1.0, 0.7, 0.85, 0.4, 0.5, 0.28, 0.2],
+    idleRpm: 900,
+    redline: 7000,
+    baseCutoff: 360,
+    maxCutoff: 5200,
+    noiseLevel: 0.3,
+    rumble: 0.5,
+    linear: false,
+  },
+  {
     id: 'scifi',
     label: 'Sci-Fi Whine (lineair)',
     cylinders: 2,
@@ -179,8 +205,23 @@ export class EngineSound {
     this.oscBody.start();
     this.noise.start();
     this.started = true;
-    // Zacht infaden
-    this.engineGain.gain.setTargetAtTime(0.9, this.ctx.currentTime, 0.15);
+    this.crank();
+  }
+
+  /** Kort startgeluid: een "crank" die opzwelt naar stationair draaien. */
+  crank() {
+    const t = this.ctx.currentTime;
+    const g = this.engineGain.gain;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(0.0001, t);
+    g.linearRampToValueAtTime(0.55, t + 0.12); // eerste omwenteling
+    g.linearRampToValueAtTime(0.22, t + 0.30); // hapert
+    g.linearRampToValueAtTime(0.9, t + 0.62);  // pakt aan -> idle
+    // starter-ruisburst
+    const n = this.noiseGain.gain;
+    n.cancelScheduledValues(t);
+    n.setValueAtTime(0.5, t);
+    n.linearRampToValueAtTime(0.08, t + 0.55);
   }
 
   stop() {
@@ -193,11 +234,13 @@ export class EngineSound {
    * Werk de motorklank bij op basis van huidig toerental en belasting.
    * @param {number} rpm    huidig toerental
    * @param {number} load   -1..1 (accel = positief/agressief, decel = negatief)
+   * @param {{limiter?:boolean}} [opts]
    */
-  update(rpm, load) {
+  update(rpm, load, opts = {}) {
     const p = this.profile;
     const ctx = this.ctx;
     const t = ctx.currentTime;
+    const limiter = !!opts.limiter;
 
     // Firing-frequentie van een 4-takt: (rpm/60) * (cilinders/2)
     let firing = (rpm / 60) * (p.cylinders / 2);
@@ -226,8 +269,27 @@ export class EngineSound {
     this.noiseBand.frequency.setTargetAtTime(700 + 2600 * rpmFrac, t, 0.06);
 
     // Bij hoog toerental iets meer main, minder body (schriller)
-    this.mainGain.gain.setTargetAtTime(0.42 + 0.2 * rpmFrac, t, 0.05);
+    let mainTarget = 0.42 + 0.2 * rpmFrac;
+    if (limiter) {
+      // Toerenbegrenzer: snelle brandstof-onderbreking (~10 Hz "brraap").
+      this._flutter = (this._flutter || 0) + 1;
+      const cut = this._flutter % 6 < 3;
+      mainTarget *= cut ? 0.12 : 1.0;
+      this.noiseGain.gain.setTargetAtTime(noiseTarget * (cut ? 1.4 : 0.6), t, 0.005);
+    }
+    this.mainGain.gain.setTargetAtTime(mainTarget, t, limiter ? 0.006 : 0.05);
     this.bodyGain.gain.setTargetAtTime((0.4 - 0.2 * rpmFrac) * p.rumble, t, 0.05);
+  }
+
+  /** Korte gas-blip bij terugschakelen (rev-match): even opduwen. */
+  shiftBlip(ms = 170) {
+    const t = this.ctx.currentTime;
+    const g = this.engineGain.gain;
+    const cur = g.value || 0.9;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(cur, t);
+    g.linearRampToValueAtTime(Math.min(1.3, cur * 1.28), t + 0.05);
+    g.linearRampToValueAtTime(0.9, t + ms / 1000);
   }
 
   /** Korte volume-dip om een schakelmoment te suggereren. */

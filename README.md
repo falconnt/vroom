@@ -69,9 +69,16 @@ demo-slider. GPS werkt alleen over HTTPS of `localhost`.
 
 ## Roadmap
 
-Deze publicatie dekt fase 1–2 (audio-engine, demo + GPS, RPM-meter,
-versnellingsbak, PWA). Volgende stappen: verfijnde schakel-accenten, meer
-motorprofielen, en optioneel sample-gebaseerde loops.
+- **Fase 1–2 ✅** audio-engine, demo + GPS, RPM-meter, PWA/offline.
+- **Fase 3 ✅** versnellingsbak met op-/afschakelen, terugschakel-blip
+  (rev-match), toerenbegrenzer met "bounce", startgeluid, shift-light, en
+  extra motorprofielen (V8, Inline-4 turbo, V10, V-twin, Sci-Fi lineair).
+- **Volgende** overrun/knal-accenten bij uitrollen, meer profielen, en
+  optioneel sample-gebaseerde loops zodra er een rechtenvrije bron is.
+
+Vijf geluiden nu beschikbaar: **V8 Rumble**, **Inline-4 Turbo**,
+**V10 Screamer**, **V-twin Motor** (alle manueel met versnellingsbak) en
+**Sci-Fi Whine** (lineair).
 
 ## Licentie / rechten
 
