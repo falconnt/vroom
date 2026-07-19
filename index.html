@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d10" />
+  <meta name="description" content="Vroom — geef je stille EV een motorgeluid dat meebeweegt met je snelheid. Een gratis, statische web-app." />
+  <title>Vroom — EV motorgeluid</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <!-- START-overlay: AudioContext mag pas na een user-gesture starten -->
+  <div id="overlay" class="overlay">
+    <div class="overlay-card">
+      <div class="logo">VROOM</div>
+      <p class="tagline">Geef je stille EV een stem.</p>
+
+      <ol class="checklist">
+        <li>Zet je huidige audiobron (radio/streaming) op <b>pauze</b>.</li>
+        <li>Sta <b>locatie</b> toe als je op GPS-snelheid rijdt.</li>
+        <li>Houd deze tab/scherm <b>actief</b> tijdens het rijden.</li>
+      </ol>
+
+      <button id="startBtn" class="start-btn">▶ START</button>
+      <p class="hint">Stel alles in vóór het wegrijden. Test veilig met de demo-slider.</p>
+    </div>
+  </div>
+
+  <main class="dash">
+    <header class="topbar">
+      <span class="brand">VROOM</span>
+      <button id="stopBtn" class="stop-btn" disabled>■ STOP</button>
+    </header>
+
+    <!-- Grote uitlezing -->
+    <section class="gauges">
+      <div class="rpm-cluster">
+        <svg viewBox="0 0 200 200" class="rpm-svg" aria-hidden="true">
+          <circle cx="100" cy="100" r="90" class="rpm-track" />
+          <circle id="rpmArc" cx="100" cy="100" r="90" class="rpm-fill" />
+          <g id="needle" class="needle">
+            <line x1="100" y1="100" x2="100" y2="24" />
+            <circle cx="100" cy="100" r="6" />
+          </g>
+        </svg>
+        <div class="rpm-center">
+          <div id="rpmVal" class="rpm-num">0</div>
+          <div class="rpm-label">RPM</div>
+        </div>
+      </div>
+
+      <div class="readouts">
+        <div class="readout big">
+          <div id="speedVal" class="ro-num">0</div>
+          <div class="ro-label">km/h</div>
+        </div>
+        <div class="readout">
+          <div id="gearVal" class="ro-num">1</div>
+          <div class="ro-label">versnelling</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bediening -->
+    <section class="controls">
+      <label class="ctl">
+        <span>Geluid</span>
+        <select id="soundSelect"></select>
+        <small id="modeLabel" class="sub"></small>
+      </label>
+
+      <label class="ctl">
+        <span>Volume — <b id="volVal">85%</b></span>
+        <input id="volume" type="range" min="0" max="100" value="85" />
+      </label>
+
+      <label class="ctl">
+        <span>Max. snelheid (redline-kalibratie) — <b id="maxSpeedVal">120 km/h</b></span>
+        <input id="maxSpeed" type="range" min="30" max="250" value="120" />
+      </label>
+
+      <div class="ctl">
+        <span>Snelheidsbron</span>
+        <div class="segmented">
+          <label><input type="radio" name="src" value="demo" checked /> Demo-slider</label>
+          <label><input type="radio" name="src" value="gps" /> GPS (rijden)</label>
+        </div>
+        <div id="demoRow" class="demo-row">
+          <input id="demoSpeed" type="range" min="0" max="250" value="0" />
+          <b id="demoVal">0 km/h</b>
+        </div>
+        <div id="gpsStatus" class="gps-status hidden"></div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>100% in de browser · geen account · geen tracking</span>
+      <a href="./about.html">Hoe werkt dit?</a>
+    </footer>
+  </main>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
